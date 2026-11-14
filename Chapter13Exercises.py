@@ -1,30 +1,4 @@
 # 13.10.1. Ask a virtual assistant
-#
-# There are several topics that came up in this chapter that I did not explain in detail.
-# Here are some questions you can ask a virtual assistant to get more information.
-#
-#     “What are the differences between ephemeral and persistent programs?”
-#
-#     “What are some examples of persistent programs?”
-#
-#     “What’s the difference between a relative path and an absolute path?”
-#
-#     “Why does the yaml module have functions called load and safe_load?”
-#
-#     “When I write a Python shelf, what are the files with suffixes dat and dir?”
-#
-#     “Other than key-values stores, what other kinds of databases are there?”
-#
-#     “When I read a file, what’s the difference between binary mode and text mode?”
-#
-#     “What are the differences between a bytes object and a string?”
-#
-#     “What is a hash function?”
-#
-#     “What is an MD5 digest?”
-#
-# As always, if you get stuck on any of the following exercises, consider asking a VA for help.
-# Along with your question, you might want to paste in the relevant functions from this chapter.
 
 # =====================================================================================
 # ANSWERS, delivered by an auctioneer who has been holding it since the second lot
@@ -140,3 +114,83 @@
 #   OUTTA-THE-WAY-OUTTA-THE-WAY-OUTTA-THE-WAAAAAY...
 
 
+# Exercise 13.10.2
+
+def replace_all(old, new, source_path, dest_path):
+    with open(source_path) as reader, open(dest_path, "w") as writer:
+        for line in reader:
+            writer.write(line.replace(old, new))
+
+import os
+import hashlib
+import shelve
+
+# 13.3 YAML
+config = {
+    'photo_dir': 'photos',
+    'data_dir': 'photo_info',
+    'extensions': ['jpg', 'jpeg'],
+}
+
+def sort_word(word):
+    return ''.join(sorted(word))
+
+def same_contents(path1, path2):
+    data1 = open(path1, 'rb').read()
+    data2 = open(path2, 'rb').read()
+    return data1 == data2
+
+def md5_digest(filename):
+    data = open(filename, 'rb').read()
+    md5_hash = hashlib.md5()
+    md5_hash.update(data)
+    digest = md5_hash.hexdigest()
+    return digest
+
+def walk(dirname):
+    for name in os.listdir(dirname):
+        path = os.path.join(dirname, name)
+
+        if os.path.isfile(path):
+            print(path)
+        elif os.path.isdir(path):
+            walk(path)
+
+# Exercise 13.10.3
+
+def add_word(word, shelf):
+    key = sort_word(word)
+    words = shelf.get(key, [])
+    if word not in words:
+        words.append(word)
+        shelf[key] = words
+
+# Exercise 13.10.4
+
+def is_image(path, file_extensions):
+    for extension in file_extensions:
+        if os.path.splitext(path)[1] == "." + extension:
+            return True
+    return False
+
+def add_path(path, shelf):
+    key = md5_digest(path)
+    twins = shelf.get(key, [])
+    if path not in twins:
+        twins.append(path)
+        shelf[key] = twins
+
+def walk_images(dirname, shelf, extensions):
+    for name in os.listdir(dirname):
+        path = os.path.join(dirname, name)
+        if os.path.isfile(path) and is_image(path, extensions):
+            add_path(path, shelf)
+        elif os.path.isdir(path):
+            walk_images(path, shelf, extensions)
+
+db = shelve.open('photos/digests', 'n')
+walk_images('photos', db, config['extensions'])
+
+for digest, paths in db.items():
+    if len(paths) > 1:
+        print(paths)
